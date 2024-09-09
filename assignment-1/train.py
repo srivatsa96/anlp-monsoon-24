@@ -24,7 +24,6 @@ from models.transformer import TSGLangauageModel
 ## Constants
 DATASET_PATH = 'dataset/processed/Auguste_Maquet.txt'
 MODEL_CKPT_DIRECTORY = 'trained_model'
-BLOCK_SIZE = 50
 NUM_GPU = 1
 READ_ORIGINAL = True
 
@@ -161,7 +160,7 @@ def train_loop(model_out):
     decode = lambda l: tokenizer.decode(l)
 
     ## Initialise Train and Test Config
-    config = Config(block_size=BLOCK_SIZE, tokenizer=tokenizer)
+    config = Config(tokenizer=tokenizer)
     train_config = TrainConfig(accelerator)
 
     try:    

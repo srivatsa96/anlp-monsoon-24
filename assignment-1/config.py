@@ -1,8 +1,8 @@
 class Config:
-    def __init__(self,block_size,tokenizer):
+    def __init__(self,tokenizer):
         ## Hyperparameters 
         self.batch_size = 128 
-        self.block_size = block_size # Context window for for look back
+        self.block_size = 50 # Context window for for look back
         self.n_embed = 510 # Vocabulory embedding dimensions
         self.n_head = 6 # No of Heads
         self.num_heads = 6  # No of Heads
