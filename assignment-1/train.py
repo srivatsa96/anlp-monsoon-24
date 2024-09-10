@@ -1,4 +1,5 @@
 import os 
+import re
 import sys
 import math
 os.environ['CUDA_LAUNCH_BLOCKING']="1"
@@ -22,13 +23,13 @@ from models.n_gram import NGramLanguageModel
 from models.transformer import TSGLangauageModel
 
 ## Constants
-DATASET_PATH = 'dataset/processed/Auguste_Maquet.txt'
+DATASET_PATH = '../dataset/processed/Auguste_Maquet.txt'
 MODEL_CKPT_DIRECTORY = 'trained_model'
 NUM_GPU = 1
-READ_ORIGINAL = True
+READ_ORIGINAL = False
 
 
-wandb.login()
+#wandb.login()
 
 
 ## Section 1:  Data Cleaning Functions ##
@@ -81,18 +82,18 @@ def get_set(data,block_size):
     return x,y
 
 
-def load_data_and_get_pytorch_dataloaders(dataset_path, batch_size, block_size, num_gpu, encoder, clean_data = False):
-
+def load_data_and_get_pytorch_dataloaders(dataset_path, batch_size, block_size, num_gpu, encoder, clean_dataset = False):
+   # print('inside loader')
     with open(dataset_path, 'r') as f:
         dataset = f.readlines()
-
+   # print('loaded data')
     dataset_cl = None
-
-    if clean_data:
+    
+    if clean_dataset:
         dataset_cl = clean_data(dataset)
     else:
         dataset_cl = ' '.join(dataset)
-
+   # print('Read dataset')
     # Train Test Split 
     data = torch.tensor(encoder(dataset_cl), dtype=torch.long)
     n = int(0.7*len(data)) 
@@ -100,13 +101,13 @@ def load_data_and_get_pytorch_dataloaders(dataset_path, batch_size, block_size, 
     train_data = data[:n]  # 70% Data for Training
     eval_data = data[n:e]  # 20% Data for Evaluation
     test_data = data[e:]   # 10% Data for Testing
-
+    #print('Splitted')
 
     # Create Dataloaders
     train_set = get_set(train_data,block_size)
     eval_set = get_set(eval_data,block_size)
     test_set = get_set(test_data,block_size)
-
+   # print('Created pairs')
     class TSGDatasetTrain(Dataset):
         def __len__(self):
             return len(train_set[0])
@@ -124,13 +125,13 @@ def load_data_and_get_pytorch_dataloaders(dataset_path, batch_size, block_size, 
             return len(test_set[0])
         def __getitem__(self,idx):
             return test_set[0][idx],test_set[1][idx]
-    
+    #print('created dataset class')
     train_dataset = TSGDatasetTrain()
     eval_dataset = TSGDatasetEval()
     test_data = TSGTestDataset()
     train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers = num_gpu)
     eval_dataloader = DataLoader(eval_dataset, shuffle=False, batch_size=batch_size*2, num_workers = num_gpu)
-    test_dataloader = DataLoader(test_dataloader,shuffle=False,batch_size=batch_size*2, num_workers = num_gpu)
+    test_dataloader = DataLoader(test_data,shuffle=False,batch_size=batch_size*2, num_workers = num_gpu)
     return train_dataloader, eval_dataloader, test_dataloader
 
 
@@ -141,7 +142,7 @@ def load_data_and_get_pytorch_dataloaders(dataset_path, batch_size, block_size, 
 '''
 The following function trains a given language model with HF's Accelerate Framework using DDP.
 '''
-def train_loop(model_out):
+def train_loop():
 
     if not os.path.exists(MODEL_CKPT_DIRECTORY):
         os.makedirs(MODEL_CKPT_DIRECTORY)
@@ -150,7 +151,7 @@ def train_loop(model_out):
     ## Intialise Accelerator with W&B Logging
     accelerator = Accelerator(log_with="wandb")
     num_gpus = accelerator.num_processes  # Determine the number of GPUs/processes
-
+    accelerator.print(f'Launching training on {num_gpus} gpu')
     resume_from_checkpoint = False
     chk_path = 'model_0.pth'
 
@@ -158,11 +159,11 @@ def train_loop(model_out):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     encode = lambda s: tokenizer.encode(s)
     decode = lambda l: tokenizer.decode(l)
-
+   # accelerator.print('Initialised tokeniser')
     ## Initialise Train and Test Config
     config = Config(tokenizer=tokenizer)
     train_config = TrainConfig(accelerator)
-
+   # accelerator.print('Initialised config')
     try:    
         ## Loss Estimator
         @torch.no_grad()
@@ -177,7 +178,7 @@ def train_loop(model_out):
                 total_iteration += num_gpus  
             model.train()
             return total_loss / total_iteration
-                
+      #  accelerator.print('calling loader')       
         train_dataloader, eval_dataloader, test_dataloader = load_data_and_get_pytorch_dataloaders(DATASET_PATH,
                                                                                   config.batch_size,
                                                                                   config.block_size,
@@ -189,16 +190,16 @@ def train_loop(model_out):
         print(len(train_dataloader),len(eval_dataloader))
         # Initialize or load model
         if not resume_from_checkpoint:
-            model = TSGLangauageModel(config, train_config.device)
+            model = NGramLanguageModel(config, train_config.device)
             model_name = type(model).__name__
         else:
             accelerator.load_state_dict(torch.load(chk_path))  # Use accelerator's method to load in a distributed setup
-        
+        accelerator.print('I came first')
         optimizer = torch.optim.AdamW(model.parameters(), lr=train_config.learning_rate)
         model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
             model, optimizer, train_dataloader, eval_dataloader
         )
-        
+     #   accelerator.print('I am here') 
         if train_now:
             experiment_name = '{0}-experiment-{1}'.format(model_name,str(uuid.uuid4()))
             accelerator.init_trackers(
@@ -206,6 +207,7 @@ def train_loop(model_out):
                 project_name="anlp-assignment-1",
                 config={ **config.__dict__, **train_config.__dict__}
             )
+    #        accelerator.print('Launching training')
             for epoch in range(train_config.epochs):
                 accelerator.print(f"Epoch {epoch+1}/{train_config.epochs}")
                 
@@ -232,11 +234,14 @@ def train_loop(model_out):
             test_loss = estimate_loss(model,test_dataloader,num_gpus)
             accelerator.print(f"Final Test Set loss {test_loss:.4f}")
             accelerator.end_training()
-    except:
+    except Exception as e:
+        accelerator.print(e)
         pass
     finally:
         accelerator.end_training()
 
 
 if __name__ == "__main__":
+    print('Starting training')
+    wandb.login()
     train_loop()
