@@ -28,8 +28,8 @@ from data_utils import load_data_and_get_pytorch_dataloaders
 DATASET_PATH = '../dataset/processed/Auguste_Maquet.txt'
 MODEL_CKPT_DIRECTORY = 'trained_model'
 NUM_GPU = 1
-READ_ORIGINAL = False
-SENTENCE_LEVEL_MODELLING = True
+READ_ORIGINAL = True
+SENTENCE_LEVEL_MODELLING = False
 
 
 
@@ -83,7 +83,7 @@ def train_loop():
                                                                                   num_gpus,
                                                                                   encode,
                                                                                   not READ_ORIGINAL,
-                                                                                  not SENTENCE_LEVEL_MODELLING
+                                                                                SENTENCE_LEVEL_MODELLING
                                                                                   )
         torch.manual_seed(42)
         print(len(train_dataloader),len(eval_dataloader))

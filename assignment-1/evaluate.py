@@ -1,8 +1,11 @@
-from tqdm.tqdm import tqdm
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 from transformers import GPT2Tokenizer
-
+from models.lstm import LSTMLanguageModel
+from models.n_gram import NGramLanguageModel
+from models.transformer import TSGLangauageModel
+from config import Config, TrainConfig
 from data_utils import clean_data_return_sentence, get_set
 
 dataset_path = '../dataset/processed/Auguste_Maquet.txt'
@@ -43,7 +46,7 @@ eval_set = get_set(eval_data,50,True)
 test_set = get_set(test_data,50,True)
 
 
-trained_model = torch.load('model_epoch_9.pth').to('cuda')
+trained_model = torch.load('../../../NGramBestModel/model_epoch_12.pth').to('cuda')
 @torch.no_grad()
 def estimate_test_loss(model, dataset,filename,decoder):
     with torch.device('cuda'):
@@ -56,14 +59,14 @@ def estimate_test_loss(model, dataset,filename,decoder):
                 Y = torch.unsqueeze(dataset[1][idx],dim=0).to('cuda')
                 _, loss = model(X, Y)
                 total_loss += loss
-                f.write(f'{idx}/{len(dataset[0])}\t{decoder(X.cpu().detach().numpy()[0])}\t{loss.item()}\n')
+                f.write(f'{idx}/{len(dataset[0])}\t{decoder(X.cpu().detach().numpy()[0])}\t{torch.exp(loss).item()}\n')
                 total_iteration += 1  
             model.train()
-            avg_loss = total_loss / total_iteration
+            avg_loss = torch.exp(total_loss / total_iteration)
             print(avg_loss.item())
-            f.write(f'Average Loss {0}'.format(avg_loss.item()))
+            f.write('Average Loss {0}'.format(avg_loss.item()))
         return avg_loss
 
-estimate_test_loss(trained_model,train_set,'reports/2024701003-Transformers-Train-Perplexity.txt')
-estimate_test_loss(trained_model,test_set,'reports/2024701003-Transformers-Test-Perplexity.txt')
-estimate_test_loss(trained_model,eval_set,'reports/2024701003-Transformers-Val-Perplexity.txt')
+estimate_test_loss(trained_model,train_set,'reports/test-2024701003-Transformers-Train-Perplexity.txt',decode)
+estimate_test_loss(trained_model,test_set,'reports/test-2024701003-Transformers-Test-Perplexity.txt',decode)
+estimate_test_loss(trained_model,eval_set,'reports/test-2024701003-Transformers-Val-Perplexity.txt',decode)
