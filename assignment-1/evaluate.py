@@ -64,6 +64,6 @@ def estimate_test_loss(model, dataset,filename,decoder):
             f.write(f'Average Loss {0}'.format(avg_loss.item()))
         return avg_loss
 
-estimate_test_loss(trained_model,train_set,'2024701003-Transformers-Train-Perplexity.txt')
-estimate_test_loss(trained_model,test_set,'2024701003-Transformers-Test-Perplexity.txt')
-estimate_test_loss(trained_model,eval_set,'2024701003-Transformers-Val-Perplexity.txt')
+estimate_test_loss(trained_model,train_set,'reports/2024701003-Transformers-Train-Perplexity.txt')
+estimate_test_loss(trained_model,test_set,'reports/2024701003-Transformers-Test-Perplexity.txt')
+estimate_test_loss(trained_model,eval_set,'reports/2024701003-Transformers-Val-Perplexity.txt')
