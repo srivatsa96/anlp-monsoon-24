@@ -19,14 +19,10 @@ class Head(nn.Module):
     def forward(self,q_vec,k_vec,v_vec,mask=None):
         B,T,C = q_vec.shape
         k = self.key(k_vec)
-        print('k: ',k.shape)
         q = self.query(q_vec)
-        print('k: ',q.shape)
         attn_scores = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5 
-        print('attn_scores: ',attn_scores.shape)
         if mask is not None:
             mask = self._expand_along_time(mask,attn_scores.shape[1])
-            print('mask: ',mask.shape)
             if self.mode == 'causal':
                 mask = mask * self.tril[:T,:T]  ## (B T T) * (T T) --> Causal Attention during decoding
             attn_scores = attn_scores.masked_fill(mask==0,float('-inf'))
@@ -144,7 +140,7 @@ class EncoderDecoderTransformer(nn.Module):
         self.decoder_blocks = nn.Sequential(*[Block(config,cross_attention=True,block_type='decoder') for _ in range(self.config.n_layer)])
         
         self.ln_f = nn.LayerNorm(self.config.n_embed)
-        self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size)
+        self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size + 10)
 
         self._create_pe_cache()
     
