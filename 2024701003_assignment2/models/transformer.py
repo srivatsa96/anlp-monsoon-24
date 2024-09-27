@@ -147,7 +147,7 @@ class EncoderDecoderTransformer(nn.Module):
         B_enc,T_enc = enc_idx.shape 
 
         encoder_input = self.input_vocab_embedding_table(enc_idx) + self.pe[:,:T_enc] # Input + Input PE
-
+        print('got enc')
         B_dec,T_dec = dec_idx.shape
 
         if B_enc != B_dec:
@@ -158,9 +158,12 @@ class EncoderDecoderTransformer(nn.Module):
             decoder_input = self.input_vocab_embedding_table(target) + self.pe[:,:T_dec]
         else:
             decoder_input = self.output_vocab_embedding_table(target) + self.pe[:,:T_dec]
+        print('got dec')
         
         mem = self.encoder_blocks(encoder_input,enc_mask)
+        print('got mem')
         output = self.decoder_blocks(decoder_input,dec_mask,mem,enc_mask)
+        print('got out')
 
         logits = self.lm_head(output)
 
@@ -175,7 +178,7 @@ class EncoderDecoderTransformer(nn.Module):
             valid_logits = logits[target_mask.bool()]
             valid_targets = target[target_mask.bool()]
             loss = F.cross_entropy(valid_logits, valid_targets)
-        
+            print(type(loss))
         return logits, loss 
     
     ## Not supporting batch prediction as inputs are not padded.
