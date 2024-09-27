@@ -158,8 +158,8 @@ class EncoderDecoderTransformer(nn.Module):
         else:
             decoder_input = self.output_vocab_embedding_table(target) + self.pe[:,:T_dec]
         
-        mem,_,_,_ = self.encoder_blocks(encoder_input,enc_mask)
-        output,_,_,_ = self.decoder_blocks(decoder_input,dec_mask,mem,enc_mask)
+        mem,_,_,_ = self.encoder_blocks(x=encoder_input, x_mask=enc_mask, mem=None, mem_mask=None)
+        output,_,_,_ = self.decoder_blocks(x=decoder_input,x_mask=dec_mask,mem=mem,mem_mask=enc_mask)
 
         logits = self.lm_head(output)
 
