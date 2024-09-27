@@ -12,6 +12,7 @@ class Config:
         self.n_layer = 6  # Number of transformer layers
         self.enc_block_size = 50  # Encoder block size
         self.dec_block_size = 50  # Decoder block size
+        self.config.head_size = self.n_embed // self.num_heads # Dimension of each head
 
 class TrainConfig:
     def __init__(self, accelerator):

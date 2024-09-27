@@ -112,7 +112,7 @@ def train_loop():
             experiment_name = '{0}-experiment-{1}'.format(model_name,str(uuid.uuid4()))
             accelerator.init_trackers(
                 init_kwargs={"wandb": {"name": experiment_name}},
-                project_name="anlp-assignment-1",
+                project_name="anlp-assignment-2",
                 config={ **model_config.__dict__, **train_config.__dict__}
             )
 
