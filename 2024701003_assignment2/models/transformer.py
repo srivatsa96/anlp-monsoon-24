@@ -118,9 +118,9 @@ class EncoderDecoderTransformer(nn.Module):
         self.device = device
 
         ## Define Embedding Tables (Both have same dimension as using the ss)
-        self.input_vocab_embedding_table = nn.Embedding(self.config.vocab_size, self.config.n_embed)
+        self.input_vocab_embedding_table = nn.Embedding(self.config.vocab_size + 10, self.config.n_embed)
         if not self.config.share_embedding:
-            self.output_vocab_embedding_table = nn.Embedding(self.config.vocab_size, self.config.n_embed)
+            self.output_vocab_embedding_table = nn.Embedding(self.config.vocab_size + 10, self.config.n_embed)
         
 
         ## Define Positional Embedding
