@@ -123,7 +123,9 @@ def train_loop():
                 model.train()
                 total_train_loss = 0
                 for x_enc, x_enc_mask, x_dec, x_dec_mask, y, y_mask in train_dataloader:
+                    accelerator.print('issue1')
                     logits, loss = model(x_enc, x_dec, y, x_enc_mask, x_dec_mask, y_mask)
+                    accelerator.print('issue2')
                     optimizer.zero_grad(set_to_none=True)
                     accelerator.backward(loss)
                     optimizer.step()
