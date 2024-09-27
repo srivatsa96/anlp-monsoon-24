@@ -13,7 +13,7 @@ class Head(nn.Module):
         self.value = nn.Linear(self.config.n_embed, self.config.head_size, bias=False)
         self.dropout = nn.Dropout(self.config.dropout)
         if self.mode == 'causal':
-            self.register_buffer('tril',torch.tril(torch.ones(self.config.block_size, self.config.block_size)))
+            self.register_buffer('tril',torch.tril(torch.ones(self.config.dec_block_size, self.config.dec_block_size)))
         self.mode = mode
     
     def forward(self,q_vec,k_vec,v_vec,mask=None):
@@ -129,8 +129,8 @@ class EncoderDecoderTransformer(nn.Module):
             self.encoder_position_embedding_table = self.pe
             self.decoder_position_embedding_table = self.pe
         elif self.config.pe_mode == 'learnable':
-            self.encoder_position_embedding_table = nn.Embedding(self.config.block_size, self.config.n_embed)
-            self.decoder_position_embedding_table = nn.Embedding(self.config.block_size, self.config.n_embed)
+            self.encoder_position_embedding_table = nn.Embedding(self.config.enc_block_size, self.config.n_embed)
+            self.decoder_position_embedding_table = nn.Embedding(self.config.dec_block_size, self.config.n_embed)
         else:
             raise ValueError('Unsupported PE')
 
@@ -196,8 +196,9 @@ class EncoderDecoderTransformer(nn.Module):
         return dec_idx
     
     def _create_pe_cache(self):
-        pe = torch.zeros(self.config.block_size, self.config.n_embed)
-        position = torch.arange(0, self.config.block_size).unsqueeze(1)
+        max_len = max(self.config.enc_block_size,self.config.dec_block_size)
+        pe = torch.zeros(max_len, self.config.n_embed)
+        position = torch.arange(0, max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, self.config.n_embed, 2) *
                              -(torch.log(10000.0) / self.config.n_embed))
         pe[:, 0::2] = torch.sin(position * div_term)
