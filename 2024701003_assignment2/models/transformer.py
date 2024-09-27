@@ -8,13 +8,13 @@ class Head(nn.Module):
     def __init__(self,config,mode='causal'):
         super().__init__()
         self.config = config
+        self.mode = mode
         self.key = nn.Linear(self.config.n_embed, self.config.head_size, bias=False)
         self.query = nn.Linear(self.config.n_embed, self.config.head_size, bias=False)
         self.value = nn.Linear(self.config.n_embed, self.config.head_size, bias=False)
         self.dropout = nn.Dropout(self.config.dropout)
         if self.mode == 'causal':
             self.register_buffer('tril',torch.tril(torch.ones(self.config.dec_block_size, self.config.dec_block_size)))
-        self.mode = mode
     
     def forward(self,q_vec,k_vec,v_vec,mask=None):
         B,T,C = q_vec.shape
