@@ -146,7 +146,7 @@ def train_loop():
             accelerator.print(f"Final Test Set loss {test_loss:.4f}")
             accelerator.end_training()
     except Exception as e:
-        accelerator.print(e)
+        raise e
         pass
     finally:
         accelerator.end_training()
