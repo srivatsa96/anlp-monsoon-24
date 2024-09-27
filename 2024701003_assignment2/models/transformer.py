@@ -135,8 +135,8 @@ class EncoderDecoderTransformer(nn.Module):
             raise ValueError('Unsupported PE')
 
 
-        self.encoder_blocks = nn.Sequential(*[Block(config,cross_attention=False,block_type='encoder') for _ in range(self.config.n_layer)])
-        self.decoder_blocks = nn.Sequential(*[Block(config,cross_attention=True,block_type='decoder') for _ in range(self.config.n_layer)])
+        self.encoder_block = Block(config,cross_attention=False,block_type='encoder') 
+        self.decoder_block = Block(config,cross_attention=True,block_type='decoder')
         
         self.ln_f = nn.LayerNorm(self.config.n_embed)
         self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size)
@@ -158,8 +158,12 @@ class EncoderDecoderTransformer(nn.Module):
         else:
             decoder_input = self.output_vocab_embedding_table(target) + self.pe[:,:T_dec]
         
-        mem,_,_,_ = self.encoder_blocks(x=encoder_input, x_mask=enc_mask, mem=None, mem_mask=None)
-        output,_,_,_ = self.decoder_blocks(x=decoder_input,x_mask=dec_mask,mem=mem,mem_mask=enc_mask)
+        for _ in self.config.n_layer:
+            encoder_input,_,_,_ = self.encoder_block(x=encoder_input, x_mask=enc_mask, mem=None, mem_mask=None)
+        mem = encoder_input
+        for _ in self.config.n_layer:
+            decoder_input,_,_,_ = self.decoder_block(x=decoder_input,x_mask=dec_mask,mem=mem,mem_mask=enc_mask)
+        output = decoder_input
 
         logits = self.lm_head(output)
 
