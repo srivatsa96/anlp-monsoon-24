@@ -63,11 +63,11 @@ def train_loop():
     ## Intialise Accelerator with W&B Logging
     accelerator = Accelerator(log_with="wandb")
     train_config = TrainConfig(accelerator)   
-    train_dataloader, eval_dataloader, test_dataloader,tokenizer = generate_data_loader(X_TRAIN,Y_TRAIN,
+    train_dataloader, eval_dataloader, test_dataloader,tokeniser = generate_data_loader(X_TRAIN,Y_TRAIN,
                                                                                         X_DEV,Y_DEV,
                                                                                         X_TEST,Y_TEST,
                                                                                         batch_size=train_config.batch_size)
-    model_config = Config(tokenizer=tokenizer)
+    model_config = Config(tokeniser=tokeniser)
 
 
     num_gpus = accelerator.num_processes  # Determine the number of GPUs/processes
@@ -104,8 +104,8 @@ def train_loop():
         
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=train_config.learning_rate)
-        model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-            model, optimizer, train_dataloader, eval_dataloader
+        model, optimizer, train_dataloader, eval_dataloader,test_dataloader = accelerator.prepare(
+            model, optimizer, train_dataloader, eval_dataloader,test_dataloader
         )
 
         if train_now:
