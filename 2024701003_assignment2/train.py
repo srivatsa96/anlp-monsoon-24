@@ -24,13 +24,13 @@ from data_utils import generate_data_loader
 
 
 ## Data Paths
-TRAIN_DATA_PATH_X = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/train.en'
-TRAIN_DATA_PATH_Y = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/train.fr'
-DEV_DATA_PATH_X = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/dev.en'
-DEV_DATA_PATH_Y = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/dev.fr'
-TEST_DATA_PATH_X = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/test.en'
-TEST_DATA_PATH_Y = '/Users/srivatsasinha/Desktop/assignment/anlp-monsoon-24/dataset/ted-talks-corpus/test.fr'
-MODEL_CKPT_DIRECTORY = 'trained_model'
+TRAIN_DATA_PATH_X = '../dataset/ted-talks-corpus/train.en'
+TRAIN_DATA_PATH_Y = '../dataset/ted-talks-corpus/train.fr'
+DEV_DATA_PATH_X = '../dataset/ted-talks-corpus/dev.en'
+DEV_DATA_PATH_Y = '../dataset/ted-talks-corpus/dev.fr'
+TEST_DATA_PATH_X = '../dataset/ted-talks-corpus/test.en'
+TEST_DATA_PATH_Y = '../dataset/ted-talks-corpus/test.fr'
+MODEL_CKPT_DIRECTORY = 'trained_models'
 
 
 ## Section 3: Training ##
