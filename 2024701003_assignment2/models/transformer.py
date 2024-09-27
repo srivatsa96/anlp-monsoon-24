@@ -25,7 +25,7 @@ class Head(nn.Module):
         attn_scores = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5 
         print('attn_scores: ',attn_scores.shape)
         if mask is not None:
-            mask = self._expand_along_time(mask)
+            mask = self._expand_along_time(mask,attn_scores.shape[1])
             print('mask: ',mask.shape)
             if self.mode == 'causal':
                 mask = mask * self.tril[:T,:T]  ## (B T T) * (T T) --> Causal Attention during decoding
@@ -36,9 +36,9 @@ class Head(nn.Module):
         out = attn_weight @ v
         return out
     
-    def _expand_along_time(self,mask):
+    def _expand_along_time(self,mask,time):
         B,T = mask.shape
-        return mask.repeat(1, T).view(B,T,T)
+        return mask.repeat(1, time).view(B,time,T)
 
 
 class MultiHeadAttention(nn.Module):
