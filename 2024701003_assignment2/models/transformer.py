@@ -100,7 +100,8 @@ class Block(nn.Module):
         
         self.ln3 = nn.LayerNorm(self.config.n_embed)
     
-    def forward(self,x,x_mask=None,mem=None,mem_mask=None):
+    def forward(self,input):
+        x,x_mask,mem,mem_mask = input
         x = self.ln1(x + self.sa(q_vec=x,k_vec=mem,v_vec=mem,mask=x_mask))
         if self.cross_attention:
             if mem == None:
