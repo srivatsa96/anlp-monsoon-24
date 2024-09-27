@@ -102,7 +102,7 @@ class Block(nn.Module):
     
     def forward(self,input):
         x,x_mask,mem,mem_mask = input
-        x = self.ln1(x + self.sa(q_vec=x,k_vec=mem,v_vec=mem,mask=x_mask))
+        x = self.ln1(x + self.sa(q_vec=x,k_vec=x,v_vec=x,mask=x_mask))
         if self.cross_attention:
             if mem == None:
                 raise ValueError('Encoder Input Required for Cross Attention')
