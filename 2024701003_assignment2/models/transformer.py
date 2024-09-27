@@ -147,7 +147,6 @@ class EncoderDecoderTransformer(nn.Module):
         B_enc,T_enc = enc_idx.shape 
 
         encoder_input = self.input_vocab_embedding_table(enc_idx) + self.pe[:,:T_enc] # Input + Input PE
-        print('got enc')
         B_dec,T_dec = dec_idx.shape
 
         if B_enc != B_dec:
@@ -158,12 +157,9 @@ class EncoderDecoderTransformer(nn.Module):
             decoder_input = self.input_vocab_embedding_table(target) + self.pe[:,:T_dec]
         else:
             decoder_input = self.output_vocab_embedding_table(target) + self.pe[:,:T_dec]
-        print('got dec')
         
         mem = self.encoder_blocks(encoder_input,enc_mask)
-        print('got mem')
         output = self.decoder_blocks(decoder_input,dec_mask,mem,enc_mask)
-        print('got out')
 
         logits = self.lm_head(output)
 
@@ -203,7 +199,7 @@ class EncoderDecoderTransformer(nn.Module):
         pe = torch.zeros(max_len, self.config.n_embed)
         position = torch.arange(0, max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, self.config.n_embed, 2) *
-                             -(torch.log(10000.0) / self.config.n_embed))
+                             -(torch.log(torch.tensor(10000.0)) / self.config.n_embed))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
