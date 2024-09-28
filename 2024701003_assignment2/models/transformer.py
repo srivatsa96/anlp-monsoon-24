@@ -87,7 +87,6 @@ class Block(nn.Module):
         # In decoder we apply masked self attention while in encoder we do full attention
         if block_type == 'decoder':
             self.sa = MultiHeadAttention(self.config,'causal')
-            self.ca = MultiHeadAttention(self.config,'full')
         else:
             self.sa = MultiHeadAttention(self.config,'full')
 
@@ -96,6 +95,7 @@ class Block(nn.Module):
 
         # Should cross attention be added (decoder can be w/o one)
         if self.cross_attention:
+            self.ca = MultiHeadAttention(self.config,'full')
             self.ln2 = nn.LayerNorm(self.config.n_embed)
         
         self.ln3 = nn.LayerNorm(self.config.n_embed)
