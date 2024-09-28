@@ -114,7 +114,8 @@ def train_loop():
 
         if train_now:
             experiment_name = '{0}-experiment-{1}'.format(model_name,str(uuid.uuid4()))
-            tokeniser.save_pretrained(os.path.join(MODEL_CKPT_DIRECTORY,f"{experiment_name}_tokeniser"))
+            if accelerator.is_local_main_process:
+                tokeniser.save_pretrained(os.path.join(MODEL_CKPT_DIRECTORY,f"{experiment_name}_tokeniser"))
             accelerator.init_trackers(
                 init_kwargs={"wandb": {"name": experiment_name}},
                 project_name="anlp-assignment-2",
