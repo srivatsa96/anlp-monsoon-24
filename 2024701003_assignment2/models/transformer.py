@@ -175,10 +175,43 @@ class EncoderDecoderTransformer(nn.Module):
             valid_logits = logits[target_mask.bool()]
             valid_targets = target[target_mask.bool()]
             loss = F.cross_entropy(valid_logits, valid_targets)
-        return logits, loss 
+        return logits, loss
+
+    def generate(self, enc_idx, dec_idx, max_new_tokens, beam_width=5):
+        if enc_idx.shape[0] != 1:
+            raise ValueError('Only Single Sample Prediction Supported')
+        if enc_idx.shape[1] > self.config.enc_block_size:
+            raise ValueError('Input Sentence longer than what model is trained on')
+
+        beams = [(dec_idx, 0)]  # (sequence, score)
+        
+        for _ in range(max_new_tokens):
+            all_candidates = []
+            for seq, score in beams:
+                idx_cond = seq[:, -self.config.dec_block_size:]
+                logits, _ = self(enc_idx, idx_cond)
+                logits = logits[:, -1, :]  # Get the last token's logits
+                probs = F.softmax(logits, dim=-1)
+                
+                # Get the top k tokens and their scores
+                top_k_probs, top_k_indices = torch.topk(probs, beam_width)
+                
+                for i in range(beam_width):
+                    token = top_k_indices[0, i].unsqueeze(0)  # Shape: (1,)
+                    new_seq = torch.cat((seq, token.unsqueeze(0)), dim=1)  # Add new token
+                    new_score = score - top_k_probs[0, i].item()  # Negative log probability
+                    all_candidates.append((new_seq, new_score))
+
+            # Sort candidates by score and select the top k
+            all_candidates.sort(key=lambda x: x[1])  # Lower score is better
+            beams = all_candidates[:beam_width]
+
+        # Get the best sequence
+        best_sequence = beams[0][0]
+        return best_sequence
     
     ## Not supporting batch prediction as inputs are not padded.
-    def generate(self, enc_idx, dec_idx, max_new_tokens):
+    def _generate(self, enc_idx, dec_idx, max_new_tokens,temp=1.0):
 
         if(enc_idx.shape[0]!=1):
             raise ValueError('Only Single Sample Prediction Supported')
@@ -188,9 +221,17 @@ class EncoderDecoderTransformer(nn.Module):
         for _ in range(max_new_tokens):
             idx_cond = dec_idx[:,-self.config.dec_block_size:]
             logits, loss = self(enc_idx,idx_cond)
-            logits = logits[:,-1,:]
+            if temp > 0.0:
+                logits = logits[:,-1,:]/temp 
             probs = F.softmax(logits,dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
+            print(probs.shape)
+            if temp > 0.0:
+                idx_next = torch.multinomial(probs, num_samples=1)
+                print(idx_next.shape)
+            else:
+                idx_next = torch.argmax(probs,keepdim=True).squeeze(1)
+                print(idx_next.shape)
+                print(dec_idx.shape)
             dec_idx = torch.cat((dec_idx, idx_next), dim=1)
         return dec_idx
     

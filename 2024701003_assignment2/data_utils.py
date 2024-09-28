@@ -27,7 +27,7 @@ def generate_data_loader(X_train,Y_train,X_dev,Y_dev,X_test,Y_test,
                          tokenizer=None,
                          start_token='<|I_am_start|>',
                          end_token='<|I_am_end|>',
-                         max_legth=50,
+                         max_legth=100,
                          num_gpu=0):
     def tokenise_data(X,Y,tokenizer=None,start_token='<|I_am_start|>',end_token='<|I_am_end|>',max_legth=50):
         if tokenizer is None:
@@ -42,8 +42,8 @@ def generate_data_loader(X_train,Y_train,X_dev,Y_dev,X_test,Y_test,
 
             print(f"Added {num_added_toks} special tokens.")
     
-        X_tokens = tokenizer(X, return_tensors='pt', padding=True, truncation=True,max_length=50)
-        Y_tokens = tokenizer(format_lines(Y), return_tensors='pt', padding=True, truncation=True,max_length=50)
+        X_tokens = tokenizer(X, return_tensors='pt', padding=True, truncation=True,max_length=100)
+        Y_tokens = tokenizer(format_lines(Y), return_tensors='pt', padding=True, truncation=True,max_length=100)
         return X_tokens, Y_tokens, tokenizer
     
     X_train_tokens, Y_train_tokens, tokenizer = tokenise_data(X_train,Y_train)

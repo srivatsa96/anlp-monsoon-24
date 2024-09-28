@@ -38,6 +38,13 @@ MODEL_CKPT_DIRECTORY = 'trained_models'
 ## Section 3: Training ##
 ## Training Routines
 
+def get_lr(step, d_model=512, warmup_steps=4000):
+    """Calculate the learning rate based on the current step."""
+    if step < warmup_steps:
+        return (d_model ** -0.5) * step * (warmup_steps ** -1.5)
+    else:
+        return (d_model ** -0.5) * min(step ** -0.5, step * (warmup_steps ** -1.5))
+
 '''
 The following function trains a given language model with HF's Accelerate Framework using DDP.
 '''
@@ -121,7 +128,7 @@ def train_loop():
                 project_name="anlp-assignment-2",
                 config={ **model_config.__dict__, **train_config.__dict__}
             )
-
+            current_step=0
             for epoch in range(train_config.epochs):
                 accelerator.print(f"Epoch {epoch+1}/{train_config.epochs}")
 
@@ -143,7 +150,13 @@ def train_loop():
                     optimizer.zero_grad(set_to_none=True)
                     accelerator.backward(loss)
                     optimizer.step()
-                
+                   
+
+                    # Update learning rate
+                    current_step += 1
+                    lr = get_lr(current_step)
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = lr 
                 
                 accelerator.wait_for_everyone()
                 
