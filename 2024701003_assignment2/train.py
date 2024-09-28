@@ -123,6 +123,13 @@ def train_loop():
 
             for epoch in range(train_config.epochs):
                 accelerator.print(f"Epoch {epoch+1}/{train_config.epochs}")
+
+                # Evaluate
+                train_loss = estimate_loss(model, train_dataloader,num_gpus)
+                eval_loss = estimate_loss(model, eval_dataloader,num_gpus)
+                
+                accelerator.print(f"Epoch {epoch}: train loss {train_loss:.4f}, val loss {eval_loss:.4f}")
+                accelerator.log({"train_loss": train_loss, "valid_loss": eval_loss}, step=epoch+1)          
                 
                 # Training loop
                 model.train()
@@ -136,12 +143,7 @@ def train_loop():
                     accelerator.backward(loss)
                     optimizer.step()
                 
-                # Evaluate
-                train_loss = estimate_loss(model, train_dataloader,num_gpus)
-                eval_loss = estimate_loss(model, eval_dataloader,num_gpus)
                 
-                accelerator.print(f"Epoch {epoch+1}: train loss {train_loss:.4f}, val loss {eval_loss:.4f}")
-                accelerator.log({"train_loss": train_loss, "valid_loss": eval_loss}, step=epoch+1)          
                 accelerator.wait_for_everyone()
                 
                 # Save model checkpoint
