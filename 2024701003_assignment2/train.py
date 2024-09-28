@@ -98,7 +98,6 @@ def train_loop():
             return total_loss / total_iteration
         
         torch.manual_seed(42)
-        print(len(train_dataloader),len(eval_dataloader))
         
         # Initialize or load model
         if not resume_from_checkpoint:
@@ -115,6 +114,7 @@ def train_loop():
 
         if train_now:
             experiment_name = '{0}-experiment-{1}'.format(model_name,str(uuid.uuid4()))
+            tokeniser.save_pretrained(os.path.join(MODEL_CKPT_DIRECTORY,f"{experiment_name}_tokeniser"))
             accelerator.init_trackers(
                 init_kwargs={"wandb": {"name": experiment_name}},
                 project_name="anlp-assignment-2",
