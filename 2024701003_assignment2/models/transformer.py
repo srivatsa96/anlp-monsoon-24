@@ -175,7 +175,6 @@ class EncoderDecoderTransformer(nn.Module):
             valid_logits = logits[target_mask.bool()]
             valid_targets = target[target_mask.bool()]
             loss = F.cross_entropy(valid_logits, valid_targets)
-            print(type(loss))
         return logits, loss 
     
     ## Not supporting batch prediction as inputs are not padded.

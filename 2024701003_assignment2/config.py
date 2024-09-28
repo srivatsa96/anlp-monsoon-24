@@ -16,7 +16,7 @@ class Config:
 
 class TrainConfig:
     def __init__(self, accelerator):
-        self.batch_size = 10
+        self.batch_size = 40
         self.epochs = 10  # No of Pass over train data
         self.device = accelerator.device #'cuda' if torch.cuda.is_available() else 'cpu'
         self.learning_rate = 1e-4 # Static Learning rate. TODO: Experiment with ScheduleLR
