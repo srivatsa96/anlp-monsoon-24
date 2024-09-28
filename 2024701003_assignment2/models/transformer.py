@@ -155,9 +155,9 @@ class EncoderDecoderTransformer(nn.Module):
 
         ## If Embedding Layer is shared between input and output layer.
         if self.config.share_embedding:
-            decoder_input = self.input_vocab_embedding_table(target) + self.pe[:,:T_dec]
+            decoder_input = self.input_vocab_embedding_table(dec_idx) + self.pe[:,:T_dec]
         else:
-            decoder_input = self.output_vocab_embedding_table(target) + self.pe[:,:T_dec]
+            decoder_input = self.output_vocab_embedding_table(dec_idx) + self.pe[:,:T_dec]
         
         mem,_,_,_ = self.encoder_blocks((encoder_input, enc_mask, None, None))
         output,_,_,_ = self.decoder_blocks((decoder_input,dec_mask,mem,enc_mask))
