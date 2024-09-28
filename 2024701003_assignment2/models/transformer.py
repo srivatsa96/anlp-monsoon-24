@@ -139,7 +139,7 @@ class EncoderDecoderTransformer(nn.Module):
         self.encoder_blocks = nn.Sequential(*[Block(config,cross_attention=False,block_type='encoder') for _ in range(self.config.n_layer)])
         self.decoder_blocks = nn.Sequential(*[Block(config,cross_attention=True,block_type='decoder') for _ in range(self.config.n_layer)])
         
-        self.ln_f = nn.LayerNorm(self.config.n_embed)
+        #self.ln_f = nn.LayerNorm(self.config.n_embed)
         self.lm_head = nn.Linear(self.config.n_embed, self.config.vocab_size + 10)
 
         self._create_pe_cache()
