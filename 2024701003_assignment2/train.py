@@ -13,6 +13,8 @@ from accelerate import notebook_launcher
 import wandb
 import uuid
 
+from tqdm import tqdm
+
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__))) 
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -81,10 +83,13 @@ def train_loop():
         ## Loss Estimator
         @torch.no_grad()
         def estimate_loss(model, dataloader, num_gpus):
+            dataloader_with_bar = tqdm(
+                    dataloader, disable=(not accelerator.is_local_main_process)
+            )
             model.eval()
             total_loss = 0
             total_iteration = 0
-            for x_enc, x_enc_mask, x_dec, x_dec_mask, y, y_mask in train_dataloader:
+            for x_enc, x_enc_mask, x_dec, x_dec_mask, y, y_mask in dataloader_with_bar:
                 logits, loss = model(x_enc, x_dec, y, x_enc_mask, x_dec_mask, y_mask)
                 loss = accelerator.gather(loss)
                 total_loss += loss.sum()
@@ -122,7 +127,10 @@ def train_loop():
                 # Training loop
                 model.train()
                 total_train_loss = 0
-                for x_enc, x_enc_mask, x_dec, x_dec_mask, y, y_mask in train_dataloader:
+                dataloader_with_bar = tqdm(
+                    train_dataloader, disable=(not accelerator.is_local_main_process)
+                )
+                for x_enc, x_enc_mask, x_dec, x_dec_mask, y, y_mask in dataloader_with_bar:
                     logits, loss = model(x_enc, x_dec, y, x_enc_mask, x_dec_mask, y_mask)
                     optimizer.zero_grad(set_to_none=True)
                     accelerator.backward(loss)
