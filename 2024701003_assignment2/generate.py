@@ -97,6 +97,10 @@ def evaluate(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_
 
 # Helper function to initialize and run DDP
 def setup_ddp(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_mode, batch_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    os.environ['WORLD_SIZE'] = str(world_size)
+    os.environ['RANK'] = str(rank)
     evaluate(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_mode, batch_size)
 
 def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, n_gpu=1, search_mode='standard', batch_size=32):
