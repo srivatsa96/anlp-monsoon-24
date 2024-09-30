@@ -225,7 +225,7 @@ class EncoderDecoderTransformer(nn.Module):
 def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens):
     for _ in range(max_new_tokens):
         idx_cond = dec_idx[:, -self.config.dec_block_size:]
-        logits, _ = self(enc_idx, idx_cond, enc_attention_mask)  # Pass attention mask
+        logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
         logits = logits[:, -1, :]  # Get logits for the last token
         probs = F.softmax(logits, dim=-1)
         idx_next = torch.multinomial(probs, num_samples=1)
