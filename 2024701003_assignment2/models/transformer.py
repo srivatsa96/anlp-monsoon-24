@@ -177,56 +177,58 @@ class EncoderDecoderTransformer(nn.Module):
             loss = F.cross_entropy(valid_logits, valid_targets)
         return logits, loss 
 
-     ## Not supporting batch prediction as inputs are not padded.
-    def generate(self, enc_idx, dec_idx, max_new_tokens=None, beam_width=5, mode='standard'):
-        if enc_idx.shape[0] != 1:
-            raise ValueError('Only Single Sample Prediction Supported')
+    def generate(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens=None, beam_width=5, mode='standard'):
+        batch_size = enc_idx.shape[0]
         if enc_idx.shape[1] > self.config.enc_block_size:
             raise ValueError('Input Sentence longer than what model is trained on')
-        if max_new_tokens == None:
+        if max_new_tokens is None:
             max_new_tokens = self.config.dec_block_size
 
         if mode == 'beam':
-            return self._generate_by_beam_search(enc_idx,dec_idx,max_new_tokens,beam_width)
+            return self._generate_by_beam_search(enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width)
         else:
-            return self._generate_by_standard_mode(enc_idx,dec_idx,max_new_tokens)
-    
-    def _generate_by_beam_search(self, enc_idx, dec_idx, max_new_tokens, beam_width=5):
-        beams = [(dec_idx, 0)]  # (sequence, score)
+            return self._generate_by_standard_mode(enc_idx, enc_attention_mask, dec_idx, max_new_tokens)
+
+    def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5):
+        batch_size = enc_idx.shape[0]
+        beams = [(dec_idx, torch.zeros(batch_size))]  # (sequence, score)
+        
         for _ in range(max_new_tokens):
             all_candidates = []
             for seq, score in beams:
                 idx_cond = seq[:, -self.config.dec_block_size:]
-                logits, _ = self(enc_idx, idx_cond)
+                logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
                 logits = logits[:, -1, :]  # Get the last token's logits
                 probs = F.softmax(logits, dim=-1)
-                
+
                 # Get the top k tokens and their scores
                 top_k_probs, top_k_indices = torch.topk(probs, beam_width)
-                
+
                 for i in range(beam_width):
-                    token = top_k_indices[0, i].unsqueeze(0)  # Shape: (1,)
-                    new_seq = torch.cat((seq, token.unsqueeze(0)), dim=1)  # Add new token
-                    new_score = score - top_k_probs[0, i].item()  # Negative log probability
+                    token = top_k_indices[:, i].unsqueeze(1)  # Shape: (batch_size, 1)
+                    new_seq = torch.cat((seq, token), dim=1)  # Add new token for all samples
+                    new_score = score - top_k_probs[:, i].log()  # Negative log probability
                     all_candidates.append((new_seq, new_score))
 
-            # Sort candidates by score and select the top k
-            all_candidates.sort(key=lambda x: x[1])  # Lower score is better
+            # Sort candidates by score and select the top k for each batch element
+            all_candidates.sort(key=lambda x: x[1].sum().item())  # Sort by total score (lower is better)
             beams = all_candidates[:beam_width]
 
         # Get the best sequence
         best_sequence = beams[0][0]
         return best_sequence
-    
-    def _generate_by_standard_mode(self, enc_idx, dec_idx, max_new_tokens):
+
+    def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens):
         for _ in range(max_new_tokens):
-            idx_cond = dec_idx[:,-self.config.dec_block_size:]
-            logits, loss = self(enc_idx,idx_cond)
-            logits = logits[:,-1,:]
-            probs = F.softmax(logits,dim=-1)
+            idx_cond = dec_idx[:, -self.config.dec_block_size:]
+            logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
+            logits = logits[:, -1, :]  # Get logits for the last token
+            probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
-            dec_idx = torch.cat((dec_idx, idx_next), dim=1)
+            dec_idx = torch.cat((dec_idx, idx_next), dim=1)  # Append new tokens to the sequence
+
         return dec_idx
+
     
     def _create_pe_cache(self):
         max_len = max(self.config.enc_block_size,self.config.dec_block_size)
