@@ -95,13 +95,26 @@ def evaluate(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_
     
     dist.destroy_process_group()
 
-# Helper function to initialize and run DDP
-def setup_ddp(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_mode, batch_size):
+def setup_ddp(rank, world_size, X, Y, tokenizer, model, csv_file, search_mode, batch_size):
+    # Setting up the environment variables for DDP
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    os.environ['WORLD_SIZE'] = str(world_size)
-    os.environ['RANK'] = str(rank)
+    
+    # Initialize the process group for distributed training
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+    # Each rank should use a different GPU
+    device = torch.device(f'cuda:{rank}')
+    model.to(device)
+    
+    # Wrap the model with DistributedDataParallel
+    model = DDP(model, device_ids=[rank])
+
+    # Perform evaluation
     evaluate(rank, world_size, X, Y, tokenizer, model, device, csv_file, search_mode, batch_size)
+    
+    # Cleanup the process group
+    dist.destroy_process_group()
 
 def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, n_gpu=1, search_mode='standard', batch_size=32):
     """
