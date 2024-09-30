@@ -191,13 +191,14 @@ class EncoderDecoderTransformer(nn.Module):
 
     def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5):
         batch_size = enc_idx.shape[0]
-        beams = [(dec_idx, torch.zeros(batch_size))]  # (sequence, score)
+        # Ensure beams are created on the same device as enc_idx
+        beams = [(dec_idx.to(enc_idx.device), torch.zeros(batch_size, device=enc_idx.device))]  # (sequence, score)
         
         for _ in range(max_new_tokens):
             all_candidates = []
             for seq, score in beams:
                 idx_cond = seq[:, -self.config.dec_block_size:]
-                logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
+                logits, _ = self(enc_idx, idx_cond, enc_attention_mask)  # Pass attention mask
                 logits = logits[:, -1, :]  # Get the last token's logits
                 probs = F.softmax(logits, dim=-1)
 
@@ -207,7 +208,9 @@ class EncoderDecoderTransformer(nn.Module):
                 for i in range(beam_width):
                     token = top_k_indices[:, i].unsqueeze(1)  # Shape: (batch_size, 1)
                     new_seq = torch.cat((seq, token), dim=1)  # Add new token for all samples
-                    new_score = score - top_k_probs[:, i].log()  # Negative log probability
+                    
+                    # Calculate new score; ensure top_k_probs is on the same device
+                    new_score = score - top_k_probs[:, i].to(score.device).log()  # Negative log probability
                     all_candidates.append((new_seq, new_score))
 
             # Sort candidates by score and select the top k for each batch element
@@ -218,16 +221,17 @@ class EncoderDecoderTransformer(nn.Module):
         best_sequence = beams[0][0]
         return best_sequence
 
-    def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens):
-        for _ in range(max_new_tokens):
-            idx_cond = dec_idx[:, -self.config.dec_block_size:]
-            logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
-            logits = logits[:, -1, :]  # Get logits for the last token
-            probs = F.softmax(logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
-            dec_idx = torch.cat((dec_idx, idx_next), dim=1)  # Append new tokens to the sequence
 
-        return dec_idx
+def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens):
+    for _ in range(max_new_tokens):
+        idx_cond = dec_idx[:, -self.config.dec_block_size:]
+        logits, _ = self(enc_idx, idx_cond, enc_attention_mask)  # Pass attention mask
+        logits = logits[:, -1, :]  # Get logits for the last token
+        probs = F.softmax(logits, dim=-1)
+        idx_next = torch.multinomial(probs, num_samples=1)
+        dec_idx = torch.cat((dec_idx, idx_next), dim=1)  # Append new tokens to the sequence
+
+    return dec_idx
 
     
     def _create_pe_cache(self):
