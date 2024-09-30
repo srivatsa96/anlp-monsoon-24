@@ -175,16 +175,24 @@ class EncoderDecoderTransformer(nn.Module):
             valid_logits = logits[target_mask.bool()]
             valid_targets = target[target_mask.bool()]
             loss = F.cross_entropy(valid_logits, valid_targets)
-        return logits, loss
+        return logits, loss 
 
-    def generate(self, enc_idx, dec_idx, max_new_tokens, beam_width=5):
+     ## Not supporting batch prediction as inputs are not padded.
+    def generate(self, enc_idx, dec_idx, max_new_tokens=None, beam_width=5, mode='standard'):
         if enc_idx.shape[0] != 1:
             raise ValueError('Only Single Sample Prediction Supported')
         if enc_idx.shape[1] > self.config.enc_block_size:
             raise ValueError('Input Sentence longer than what model is trained on')
+        if max_new_tokens == None:
+            max_new_tokens = self.config.dec_block_size
 
+        if mode == 'beam':
+            return self._generate_by_beam_search()
+        else:
+            return self._generate_by_standard_mode()
+    
+    def _generate_by_beam_search(self, enc_idx, dec_idx, max_new_tokens, beam_width=5):
         beams = [(dec_idx, 0)]  # (sequence, score)
-        
         for _ in range(max_new_tokens):
             all_candidates = []
             for seq, score in beams:
@@ -210,28 +218,13 @@ class EncoderDecoderTransformer(nn.Module):
         best_sequence = beams[0][0]
         return best_sequence
     
-    ## Not supporting batch prediction as inputs are not padded.
-    def _generate(self, enc_idx, dec_idx, max_new_tokens,temp=1.0):
-
-        if(enc_idx.shape[0]!=1):
-            raise ValueError('Only Single Sample Prediction Supported')
-        if(enc_idx.shape[1]>self.config.enc_block_size):
-            raise ValueError('Input Sentence longer than what model is trained on')
-
+    def _generate_by_standard_mode(self, enc_idx, dec_idx, max_new_tokens):
         for _ in range(max_new_tokens):
             idx_cond = dec_idx[:,-self.config.dec_block_size:]
             logits, loss = self(enc_idx,idx_cond)
-            if temp > 0.0:
-                logits = logits[:,-1,:]/temp 
+            logits = logits[:,-1,:]
             probs = F.softmax(logits,dim=-1)
-            print(probs.shape)
-            if temp > 0.0:
-                idx_next = torch.multinomial(probs, num_samples=1)
-                print(idx_next.shape)
-            else:
-                idx_next = torch.argmax(probs,keepdim=True).squeeze(1)
-                print(idx_next.shape)
-                print(dec_idx.shape)
+            idx_next = torch.multinomial(probs, num_samples=1)
             dec_idx = torch.cat((dec_idx, idx_next), dim=1)
         return dec_idx
     
