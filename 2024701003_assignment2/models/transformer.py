@@ -198,7 +198,7 @@ class EncoderDecoderTransformer(nn.Module):
             all_candidates = []
             for seq, score in beams:
                 idx_cond = seq[:, -self.config.dec_block_size:]
-                logits, _ = self(enc_idx, idx_cond, enc_attention_mask)  # Pass attention mask
+                logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
                 logits = logits[:, -1, :]  # Get the last token's logits
                 probs = F.softmax(logits, dim=-1)
 
