@@ -14,7 +14,7 @@ def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new
     attention_mask = en_sent_enc['attention_mask'].to(device)
     
     FR_SENT = '<|I_am_start|>'
-    FR_SENT_ENC = tokeniser([FR_SENT], return_tensors='pt', padding=True, truncation=True, max_length=50)['input_ids'].to(device)
+    FR_SENT_ENC = tokeniser([FR_SENT] * len(eng_sents), return_tensors='pt', padding=True, truncation=True, max_length=50)['input_ids'].to(device)  # Ensure batch size matches
 
     # Generate translations in a batch
     generated_ids = model.generate(input_ids, 
