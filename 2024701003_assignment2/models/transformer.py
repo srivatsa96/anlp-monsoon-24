@@ -187,9 +187,9 @@ class EncoderDecoderTransformer(nn.Module):
             max_new_tokens = self.config.dec_block_size
 
         if mode == 'beam':
-            return self._generate_by_beam_search()
+            return self._generate_by_beam_search(enc_idx,dec_idx,max_new_tokens,beam_width)
         else:
-            return self._generate_by_standard_mode()
+            return self._generate_by_standard_mode(enc_idx,dec_idx,max_new_tokens)
     
     def _generate_by_beam_search(self, enc_idx, dec_idx, max_new_tokens, beam_width=5):
         beams = [(dec_idx, 0)]  # (sequence, score)

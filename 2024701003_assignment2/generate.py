@@ -53,10 +53,10 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None):
 
     Example usage:
     Interactive Mode:
-    python script.py --experiment_id=24b37128 --epoch=9 --eng_sent="How are you?"
+    python generate.py --experiment_id=24b37128 --epoch=9 --eng_sent="How are you?"
     
     Evaluation Mode:
-    python script.py --experiment_id=24b37128 --epoch=9 --set_type=test
+    python generate.py --experiment_id=24b37128 --epoch=9 --set_type=test
     """
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
