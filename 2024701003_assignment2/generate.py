@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from models.transformer import EncoderDecoderTransformer
 from torchtext.data.metrics import bleu_score
 
-def generate_translation_prediction(eng_sents, tokeniser, model, device):
+def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new_tokens=100, beam_width=5, mode='standard'):
     # Tokenize the input sentences and create attention masks
     en_sent_enc = tokeniser(eng_sents, return_tensors='pt', padding=True, truncation=True, max_length=100)
     input_ids = en_sent_enc['input_ids'].to(device)
@@ -17,13 +17,21 @@ def generate_translation_prediction(eng_sents, tokeniser, model, device):
     FR_SENT_ENC = tokeniser([FR_SENT], return_tensors='pt', padding=True, truncation=True, max_length=50)['input_ids'].to(device)
 
     # Generate translations in a batch
-    generated_ids = model.generate(input_ids, attention_mask=attention_mask, decoder_input_ids=FR_SENT_ENC, max_length=100)
+    generated_ids = model.generate(input_ids, 
+                                    enc_attention_mask=attention_mask, 
+                                    dec_idx=FR_SENT_ENC, 
+                                    max_new_tokens=max_new_tokens, 
+                                    beam_width=beam_width, 
+                                    mode=mode)
     
     # Decode the generated sentences
     generated_sentences = tokeniser.batch_decode(generated_ids, skip_special_tokens=False)
-    return generated_sentences
 
-def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size):
+    # Split each prediction at <|I_am_end|> and take the first part
+    split_sentences = [sent.split('<|I_am_end|>')[0].strip() for sent in generated_sentences]
+    return split_sentences
+
+def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size, max_new_tokens=100, beam_width=5, mode='standard'):
     with open(csv_file, 'w', newline='') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(['Sentence No', 'English Sentence', 'Reference French', 'Predicted French', 'BLEU Score'])
@@ -36,7 +44,15 @@ def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size):
             batch_en = X[i:i+batch_size]
             batch_fr = Y[i:i+batch_size]
 
-            fr_preds = generate_translation_prediction([en.strip() for en in batch_en], tokeniser, model, device)
+            fr_preds = generate_translation_prediction(
+                [en.strip() for en in batch_en], 
+                tokeniser, 
+                model, 
+                device, 
+                max_new_tokens=max_new_tokens, 
+                beam_width=beam_width, 
+                mode=mode
+            )
             
             for en, fr, fr_pred in zip(batch_en, batch_fr, fr_preds):
                 # Tokenize and append to lists for computing BLEU score
@@ -56,7 +72,7 @@ def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size):
         writer.writerow(['Overall BLEU', '', '', '', f"{overall_bleu:.4f}"])
         print(f"Overall BLEU score: {overall_bleu:.4f}")
 
-def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_size=32):
+def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_size=32, max_new_tokens=100, beam_width=5, mode='standard'):
     """
     Arguments:
     - experiment_id: str, The experiment ID of the model.
@@ -64,13 +80,16 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
     - set_type: str, The dataset to use: one of 'train', 'test', 'eval'. Optional if using interactive mode.
     - eng_sent: str, English sentence to translate in interactive mode. If provided, the script will translate this sentence and output the result.
     - batch_size: int, The size of the batches for translation. Default is 32.
+    - max_new_tokens: int, The maximum number of tokens to generate. Default is 100.
+    - beam_width: int, The width of the beam search. Default is 5.
+    - mode: str, The mode of generation. Default is 'standard'.
 
     Example usage:
     Interactive Mode:
-    python generate.py --experiment_id=24b37128 --epoch=9 --eng_sent="How are you?" --batch_size=16
+    python generate.py --experiment_id=24b37128 --epoch=9 --eng_sent="How are you?" --batch_size=16 --max_new_tokens=50 --beam_width=3 --mode='standard'
     
     Evaluation Mode:
-    python generate.py --experiment_id=24b37128 --epoch=9 --set_type=test --batch_size=16
+    python generate.py --experiment_id=24b37128 --epoch=9 --set_type=test --batch_size=16 --max_new_tokens=50 --beam_width=3 --mode='standard'
     """
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -85,7 +104,7 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
     
     # Interactive mode: Translate a single sentence
     if eng_sent:
-        fr_pred = generate_translation_prediction([eng_sent.strip()], tokeniser, trained_model, device)[0]
+        fr_pred = generate_translation_prediction([eng_sent.strip()], tokeniser, trained_model, device, max_new_tokens, beam_width, mode)[0]
         print(f"English Sentence: {eng_sent.strip()}")
         print(f"Translated French Sentence: {fr_pred}")
     
@@ -104,7 +123,7 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
         csv_file = f'bleu_scores_{experiment_id}_epoch_{epoch}_{set_type}.csv'
         
         # Evaluate and write to CSV
-        evaluate(X_TEST, Y_TEST, tokeniser, trained_model, device, csv_file, batch_size)
+        evaluate(X_TEST, Y_TEST, tokeniser, trained_model, device, csv_file, batch_size, max_new_tokens, beam_width, mode)
     else:
         print("Error: Either provide a sentence for interactive mode (using --eng_sent) or specify set_type for evaluation mode.")
     
