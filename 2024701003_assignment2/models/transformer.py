@@ -189,7 +189,7 @@ class EncoderDecoderTransformer(nn.Module):
         else:
             return self._generate_by_standard_mode(enc_idx, enc_attention_mask, dec_idx, max_new_tokens,penalty_factor)
 
-    def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5,penalty_factor=1.2):
+    def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5, penalty_factor=0.6, repetition_penalty=1.2):
         batch_size = enc_idx.shape[0]
         # Ensure beams are created on the same device as enc_idx
         beams = [(dec_idx.to(enc_idx.device), torch.zeros(batch_size, device=enc_idx.device))]  # (sequence, score)
@@ -211,15 +211,29 @@ class EncoderDecoderTransformer(nn.Module):
                     
                     # Calculate new score; ensure top_k_probs is on the same device
                     new_score = score - top_k_probs[:, i].to(score.device).log()  # Negative log probability
-                    all_candidates.append((new_seq, new_score))
+                    
+                    # Apply length penalty
+                    length = new_seq.size(1)  # Current length of the new sequence
+                    length_penalty = ((5 + length) ** penalty_factor) / ((5 + 1) ** penalty_factor)
+                    adjusted_score = new_score / length_penalty  # Adjust the score with length penalty
 
-            # Sort candidates by score and select the top k for each batch element
+                    # Apply repetition penalty
+                    token_id = token.squeeze(1)  # Shape: (batch_size,)
+                    for b in range(batch_size):
+                        # Count occurrences of the token in the current sequence
+                        if token_id[b].item() in new_seq[b, :-1].tolist():
+                            adjusted_score[b] *= (1 / repetition_penalty)  # Penalize if repeated
+
+                    all_candidates.append((new_seq, adjusted_score))
+
+            # Sort candidates by adjusted score and select the top k for each batch element
             all_candidates.sort(key=lambda x: x[1].sum().item())  # Sort by total score (lower is better)
             beams = all_candidates[:beam_width]
 
         # Get the best sequence
         best_sequence = beams[0][0]
         return best_sequence
+
 
     def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, penalty_factor=1.2):
         batch_size = dec_idx.size(0)  # Get the batch size

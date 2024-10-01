@@ -154,7 +154,7 @@ def train_loop():
 
                     # Update learning rate
                     current_step += 1
-                    lr = get_lr(current_step)
+                    lr = get_lr(current_step,d_model=model_config.n_embed)
                     for param_group in optimizer.param_groups:
                         param_group['lr'] = lr 
                 
