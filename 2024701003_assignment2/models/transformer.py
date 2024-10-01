@@ -228,7 +228,7 @@ class EncoderDecoderTransformer(nn.Module):
         for _ in range(max_new_tokens):
             idx_cond = dec_idx[:, -self.config.dec_block_size:]
             logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
-            logits = logits[:, -1, :]  # Get logits for the last token
+            logits = logits[:, -1, :] / 0.0001  # Get logits for the last token
 
             # Apply repetition penalty for each sequence in the batch
             for i in range(batch_size):

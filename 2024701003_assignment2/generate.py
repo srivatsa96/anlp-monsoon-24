@@ -8,10 +8,10 @@ from models.transformer import EncoderDecoderTransformer
 from torchtext.data.metrics import bleu_score
 
 @torch.no_grad()
-def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new_tokens=100, beam_width=5, mode='standard',penalty_factor=1.2):
+def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new_tokens=50, beam_width=5, mode='standard',penalty_factor=1.2):
     # Tokenize the input sentences and create attention masks
     model.eval()
-    en_sent_enc = tokeniser(eng_sents, return_tensors='pt', padding=True, truncation=True, max_length=100)
+    en_sent_enc = tokeniser(eng_sents, return_tensors='pt', padding=True, truncation=True, max_length=50)
     input_ids = en_sent_enc['input_ids'].to(device)
     attention_mask = en_sent_enc['attention_mask'].to(device)
     
