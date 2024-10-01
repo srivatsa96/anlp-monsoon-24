@@ -8,7 +8,7 @@ from models.transformer import EncoderDecoderTransformer
 from torchtext.data.metrics import bleu_score
 
 @torch.no_grad()
-def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new_tokens=100, beam_width=5, mode='standard'):
+def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new_tokens=100, beam_width=5, mode='standard',penalty_factor=1.2):
     # Tokenize the input sentences and create attention masks
     model.eval()
     en_sent_enc = tokeniser(eng_sents, return_tensors='pt', padding=True, truncation=True, max_length=100)
@@ -24,7 +24,8 @@ def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new
                                     dec_idx=FR_SENT_ENC, 
                                     max_new_tokens=max_new_tokens, 
                                     beam_width=beam_width, 
-                                    mode=mode)
+                                    mode=mode,
+                                    penalty_factor=penalty_factor)
     
     # Decode the generated sentences
     generated_sentences = tokeniser.batch_decode(generated_ids, skip_special_tokens=False)
@@ -33,7 +34,7 @@ def generate_translation_prediction(eng_sents, tokeniser, model, device, max_new
     split_sentences = [sent.split('<|I_am_end|>')[0].strip().split('<|I_am_start|>')[-1].strip() for sent in generated_sentences]
     return split_sentences
 
-def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size, max_new_tokens=100, beam_width=5, mode='standard'):
+def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size, max_new_tokens=100, beam_width=5, mode='standard',penalty_factor=1.2):
     with open(csv_file, 'w', newline='') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(['Sentence No', 'English Sentence', 'Reference French', 'Predicted French', 'BLEU Score'])
@@ -53,7 +54,8 @@ def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size, max_new_token
                 device, 
                 max_new_tokens=max_new_tokens, 
                 beam_width=beam_width, 
-                mode=mode
+                mode=mode,
+                penalty_factor=penalty_factor
             )
             
             for en, fr, fr_pred in zip(batch_en, batch_fr, fr_preds):
@@ -74,7 +76,7 @@ def evaluate(X, Y, tokeniser, model, device, csv_file, batch_size, max_new_token
         writer.writerow(['Overall BLEU', '', '', '', f"{overall_bleu:.4f}"])
         print(f"Overall BLEU score: {overall_bleu:.4f}")
 
-def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_size=32, max_new_tokens=100, beam_width=5, mode='standard'):
+def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_size=32, max_new_tokens=100, beam_width=5, mode='standard',penalty_factor=1.2):
     """
     Arguments:
     - experiment_id: str, The experiment ID of the model.
@@ -107,7 +109,7 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
     
     # Interactive mode: Translate a single sentence
     if eng_sent:
-        fr_pred = generate_translation_prediction([eng_sent.strip()], tokeniser, trained_model, device, max_new_tokens, beam_width, mode)[0]
+        fr_pred = generate_translation_prediction([eng_sent.strip()], tokeniser, trained_model, device, max_new_tokens, beam_width, mode,penalty_factor)[0]
         print(f"English Sentence: {eng_sent.strip()}")
         print(f"Translated French Sentence: {fr_pred}")
     
@@ -126,7 +128,7 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
         csv_file = f'bleu_scores_{experiment_id}_epoch_{epoch}_{set_type}.csv'
         
         # Evaluate and write to CSV
-        evaluate(X_TEST, Y_TEST, tokeniser, trained_model, device, csv_file, batch_size, max_new_tokens, beam_width, mode)
+        evaluate(X_TEST, Y_TEST, tokeniser, trained_model, device, csv_file, batch_size, max_new_tokens, beam_width, mode, penalty_factor)
     else:
         print("Error: Either provide a sentence for interactive mode (using --eng_sent) or specify set_type for evaluation mode.")
     

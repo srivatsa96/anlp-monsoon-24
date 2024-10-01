@@ -177,7 +177,7 @@ class EncoderDecoderTransformer(nn.Module):
             loss = F.cross_entropy(valid_logits, valid_targets)
         return logits, loss 
 
-    def generate(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens=None, beam_width=5, mode='standard'):
+    def generate(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens=None, beam_width=5, mode='standard',penalty_factor=1.2):
         batch_size = enc_idx.shape[0]
         if enc_idx.shape[1] > self.config.enc_block_size:
             raise ValueError('Input Sentence longer than what model is trained on')
@@ -187,9 +187,9 @@ class EncoderDecoderTransformer(nn.Module):
         if mode == 'beam':
             return self._generate_by_beam_search(enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width)
         else:
-            return self._generate_by_standard_mode(enc_idx, enc_attention_mask, dec_idx, max_new_tokens)
+            return self._generate_by_standard_mode(enc_idx, enc_attention_mask, dec_idx, max_new_tokens,penalty_factor)
 
-    def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5):
+    def _generate_by_beam_search(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, beam_width=5,penalty_factor=1.2):
         batch_size = enc_idx.shape[0]
         # Ensure beams are created on the same device as enc_idx
         beams = [(dec_idx.to(enc_idx.device), torch.zeros(batch_size, device=enc_idx.device))]  # (sequence, score)
@@ -221,17 +221,32 @@ class EncoderDecoderTransformer(nn.Module):
         best_sequence = beams[0][0]
         return best_sequence
 
+    def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens, penalty_factor=1.2):
+        batch_size = dec_idx.size(0)  # Get the batch size
+        generated_tokens = [[] for _ in range(batch_size)]  # Initialize list for each sequence in the batch
 
-    def _generate_by_standard_mode(self, enc_idx, enc_attention_mask, dec_idx, max_new_tokens):
         for _ in range(max_new_tokens):
             idx_cond = dec_idx[:, -self.config.dec_block_size:]
             logits, _ = self(enc_idx, idx_cond, enc_mask=enc_attention_mask)  # Pass attention mask
             logits = logits[:, -1, :]  # Get logits for the last token
+
+            # Apply repetition penalty for each sequence in the batch
+            for i in range(batch_size):
+                for token in generated_tokens[i]:
+                    logits[i, token] /= penalty_factor  # Reduce the probability for already generated tokens in the sequence
+
             probs = F.softmax(logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
-            dec_idx = torch.cat((dec_idx, idx_next), dim=1)  # Append new tokens to the sequence
+            idx_next = torch.multinomial(probs, num_samples=1)  # Sample from the probabilities
+            
+            # Update the sequence with the new tokens
+            dec_idx = torch.cat((dec_idx, idx_next), dim=1)
+            
+            # Record the generated tokens for each sequence
+            for i in range(batch_size):
+                generated_tokens[i].append(idx_next[i].item())  # Store the token ID
 
         return dec_idx
+
 
     
     def _create_pe_cache(self):
