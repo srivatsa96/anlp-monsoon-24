@@ -103,6 +103,7 @@ def main(experiment_id=None, epoch=None, set_type=None, eng_sent=None, batch_siz
     
     tokeniser = AutoTokenizer.from_pretrained(os.path.join(MODEL_CKPT_DIRECTORY, TOKENISER_NAME))
     trained_model = torch.load(os.path.join(MODEL_CKPT_DIRECTORY, MODEL_NAME)).to(device)
+    trained_model.eval()
     
     # Interactive mode: Translate a single sentence
     if eng_sent:
