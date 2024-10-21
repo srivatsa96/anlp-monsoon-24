@@ -57,12 +57,16 @@ class SummarisationModelWithSoftPrompt(nn.Module):
         prompt_embeddings_expanded = self.prompt_embeddings.unsqueeze(0).expand(input_ids.size(0), -1, -1) # (B X Seq X Embedding Dimension)
         ## Add trainable prompt
         input_with_prompt_embeddings = torch.cat([prompt_embeddings_expanded, input_embeddings], dim=1)
+        print(input_with_prompt_embeddings.shape)
         ## Pad label to account for extra prompt
-        label_with_extended_pad = torch.cat([torch.full((input_ids.size(0), self.prompt_length),-100), labels],dim=1)
+        label_pad = torch.full((input_ids.size(0), self.prompt_length),-100).to(self.base_model.device.type)
+        label_with_extended_pad = torch.cat([label_pad, labels],dim=1)
+        print(label_with_extended_pad.shape)
 
         ## Concat 1s for Soft Prompt
-        prompt_attention_mask = torch.ones(input_ids.size(0), self.prompt_length)
+        prompt_attention_mask = torch.ones(input_ids.size(0), self.prompt_length).to(self.base_model.device.type)
         extended_attention_mask = torch.cat([prompt_attention_mask, attention_mask], dim=1)
+        print(extended_attention_mask.shape)
 
         # Forward through the model with adjusted embeddings and mask
         return self.base_model(inputs_embeds=input_with_prompt_embeddings, attention_mask=extended_attention_mask, labels=label_with_extended_pad)
